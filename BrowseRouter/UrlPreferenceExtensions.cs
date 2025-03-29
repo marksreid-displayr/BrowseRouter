@@ -4,13 +4,13 @@ namespace BrowseRouter;
 
 public static class UrlPreferenceExtensions
 {
-  public static bool TryGetPreference(this IEnumerable<UrlPreference> prefs, Uri uri, out UrlPreference pref)
+  public static bool TryGetPreference(this IEnumerable<UrlPreference> prefs, Uri uri, out UrlPreference? pref)
   {
     pref = prefs.FirstOrDefault(pref =>
     {
       (string domain, string pattern) = pref.GetDomainAndPattern(uri);
       return Regex.IsMatch(domain, pattern);
-    })!;
+    });
 
     return pref != null;
   }
@@ -57,13 +57,13 @@ public static class UrlPreferenceExtensions
     }
   }
 
-  public static bool TryGetPreference(this IEnumerable<UrlPreference> prefs, string windowTitle, out UrlPreference pref)
+  public static bool TryGetPreference(this IEnumerable<UrlPreference> prefs, string windowTitle, out UrlPreference? pref)
   {
     pref = prefs.FirstOrDefault(pref =>
     {
       (string domain, string pattern) = pref.GetDomainAndPattern(windowTitle);
       return Regex.IsMatch(domain, pattern);
-    })!;
+    });
 
     return pref != null;
   }

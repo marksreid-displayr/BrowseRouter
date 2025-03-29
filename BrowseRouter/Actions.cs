@@ -1,8 +1,10 @@
-﻿namespace BrowseRouter;
+﻿using Microsoft.Extensions.Logging;
 
-public static class Actions
+namespace BrowseRouter;
+
+public class Actions(ILogger<Actions> logger) : IActions
 {
-  public static bool TryRun(Action a)
+  public bool TryRun(Action a)
   {
     try
     {
@@ -11,7 +13,7 @@ public static class Actions
     }
     catch (Exception e)
     {
-      Log.Write($"{e}");
+      logger.LogInformation($"{e}");
       return false;
     }
   }

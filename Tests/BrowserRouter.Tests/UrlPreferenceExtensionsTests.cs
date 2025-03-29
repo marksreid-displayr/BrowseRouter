@@ -118,3 +118,4 @@ public class UrlPreferenceExtensionsTests
       .BeTrue();
   }
 }
+

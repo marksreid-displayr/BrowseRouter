@@ -1,67 +1,42 @@
-﻿using System.Diagnostics;
-using System.Text;
+﻿using Microsoft.Extensions.Logging;
 
 namespace BrowseRouter;
 
-public class BrowserService(IConfigService config, INotifyService notifier)
+public class BrowserService(
+  ILogger<BrowserService> logger,
+  IGetBrowserService getBrowserService,
+  IProcessStarter processStarter)
 {
   public async Task LaunchAsync(string url, string windowTitle)
   {
     try
     {
-      Log.Write($"Attempting to launch \"{url}\" for \"{windowTitle}\"");
+      logger.LogInformation(@"Attempting to launch ""{url}"" for ""{windowTitle}""", url, windowTitle);
 
-      IEnumerable<UrlPreference> urlPreferences = config.GetUrlPreferences("urls");
-      IEnumerable<UrlPreference> sourcePreferences = config.GetUrlPreferences("sources");
-      Uri uri = UriFactory.Get(url);
+      var browser = getBrowserService.GetBrowser(windowTitle, url);
 
-      UrlPreference? pref = null;
-      if (sourcePreferences.TryGetPreference(windowTitle, out UrlPreference sourcePref))
+      if (browser == null)
       {
-        Log.Write($"Found source preference {sourcePref}");
-        pref = sourcePref;
-      }
-
-      else if (urlPreferences.TryGetPreference(uri, out UrlPreference urlPref))
-      {
-        Log.Write($"Found URL preference {urlPref}");
-        pref = urlPref;
-      }
-
-      if (pref == null)
-      {
-        Log.Write($"Unable to find a browser matching \"{url}\".");
+        logger.LogInformation("Unable to find a browser matching \"{url}\".", url);
         return;
       }
 
-      (string path, string args) = Args.SplitPathAndArgs(pref.Browser.Location);
+      var args = (browser.Parameters ?? []).Append(url).ToArray();
+      var name = GetAppName(browser.Location);
+      var path = Environment.ExpandEnvironmentVariables(browser.Location);
 
-      args = Args.Format(args, uri);
-
-      Log.Write($"Launching {path} with args \"{args}\"");
-
-      string name = GetAppName(path);
-      
-      path = Environment.ExpandEnvironmentVariables(path);
-
-      if (!Actions.TryRun(() => Process.Start(path, args)))
-      {
-        await notifier.NotifyAsync($"Error", $"Could not open {name}. Please check the log for more details.");
-        return;
-      }
-
-      await notifier.NotifyAsync($"Opening {name}", $"URL: {url}");
+      await processStarter.Start(path, browser.Location, args, name, url);
     }
     catch (Exception e)
     {
-      Log.Write($"{e}");
+      logger.LogInformation(e,"Unexpected exception");
     }
   }
 
   private static string GetAppName(string path)
   {
     // Get just the app name from the exe at path
-    string name = Path.GetFileNameWithoutExtension(path);
+    var name = Path.GetFileNameWithoutExtension(path);
     // make first letter uppercase
     name = name[0].ToString().ToUpper() + name[1..];
     return name;

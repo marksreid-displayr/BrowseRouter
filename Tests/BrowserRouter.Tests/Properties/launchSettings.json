@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "BrowserRouter.Tests": {
+      "commandName": "Project",
+      "commandLineArgs": "\"https://www.notion.so/displayr/Unreliable-Test-Attribution-1ac9a1646eb18034af24d9fd8bf46ef3?pvs=4\""
+    }
+  }
+}

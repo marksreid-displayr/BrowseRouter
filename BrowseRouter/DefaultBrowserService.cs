@@ -1,9 +1,10 @@
 ﻿using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 
 namespace BrowseRouter;
 
-public class DefaultBrowserService(INotifyService notifier)
+public class DefaultBrowserService(INotifyService notifier, ILogger<DefaultBrowserService> logger, IActions action)
 {
   private const string _appName = "BrowseRouter";
   private const string _appID = "BrowseRouter";
@@ -42,23 +43,19 @@ public class DefaultBrowserService(INotifyService notifier)
   {
     RegisterStatus status = GetRegisterStatus();
 
-    if (status == RegisterStatus.Unregistered)
+    switch (status)
     {
-      await RegisterAsync();
-      return;
-    }
-
-    if (status == RegisterStatus.Registered)
-    {
-      await UnregisterAsync();
-      return;
-    }
-
-    if (status == RegisterStatus.Updated)
-    {
-      Unregister(); // Unregister the old path
-      Register(); // Register with the new path
-      await notifier.NotifyAsync("Updated location.", $"{_appName} has been re-registered with a new path.");
+      case RegisterStatus.Unregistered:
+        await RegisterAsync();
+        return;
+      case RegisterStatus.Registered:
+        await UnregisterAsync();
+        return;
+      case RegisterStatus.Updated:
+        Unregister(); // Unregister the old path
+        Register(); // Register with the new path
+        await notifier.NotifyAsync("Updated location.", $"{_appName} has been re-registered with a new path.");
+        break;
     }
   }
 
@@ -70,7 +67,7 @@ public class DefaultBrowserService(INotifyService notifier)
 
   private void Register()
   {
-    Log.Write("Registering...");
+    logger.LogInformation("Registering...");
     RegistryKey? appReg = Registry.CurrentUser.CreateSubKey(AppKey);
 
     RegisterCapabilities(appReg);
@@ -80,7 +77,7 @@ public class DefaultBrowserService(INotifyService notifier)
     HandleUrls();
 
     OpenSettings();
-    Log.Write($"Done. Please set {_appName} as the default browser in Settings.");
+    logger.LogInformation($"Done. Please set {_appName} as the default browser in Settings.");
   }
 
   private static void OpenSettings() => Process.Start(new ProcessStartInfo
@@ -123,10 +120,10 @@ public class DefaultBrowserService(INotifyService notifier)
 
   private void Unregister()
   {
-    Log.Write("Unregistering...");
-    Actions.TryRun(() => Registry.CurrentUser.DeleteSubKeyTree(AppKey, false));
-    Actions.TryRun(() => _registerKey?.DeleteValue(_appID));
-    Actions.TryRun(() => Registry.CurrentUser.DeleteSubKeyTree(UrlKey));
-    Log.Write("Done");
+    logger.LogInformation("Unregistering...");
+    action.TryRun(() => Registry.CurrentUser.DeleteSubKeyTree(AppKey, false));
+    action.TryRun(() => _registerKey?.DeleteValue(_appID));
+    action.TryRun(() => Registry.CurrentUser.DeleteSubKeyTree(UrlKey));
+    logger.LogInformation("Done");
   }
 }
